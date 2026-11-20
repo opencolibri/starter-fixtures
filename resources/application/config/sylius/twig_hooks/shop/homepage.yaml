@@ -1,0 +1,10 @@
+# Hookables added by the catalog fixtures are prefixed with "import_" so that a theme disabling a native
+# Sylius block (new_collection, latest_deals...) never hides import content by accident.
+sylius_twig_hooks:
+    hooks:
+        'sylius_shop.homepage.index':
+            new_collection:
+                enabled: false
+            import_collections:
+                template: 'shop/homepage/new_collection.html.twig'
+                priority: 250
