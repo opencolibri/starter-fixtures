@@ -42,9 +42,11 @@ final class CatalogFixtures
         $assignments = [];
 
         foreach ($products as $index => $product) {
-            // Products of an unknown collection go to the root taxon.
-            if (null !== $code = self::taxonCodeOf((string) ($product['collection_name'] ?? ''), $taxons)) {
-                $assignments[$index] = $code;
+            // A product points at the code of its collection, or at its name. An unknown one goes to the root taxon.
+            $collection = \is_scalar($product['collection'] ?? null) ? (string) $product['collection'] : (string) ($product['collection_name'] ?? '');
+
+            if (null !== $taxon = self::find(Codes::normalizeLabel($collection), $taxons)) {
+                $assignments[$index] = $taxon['code'];
             }
         }
 
@@ -140,13 +142,14 @@ final class CatalogFixtures
     }
 
     /**
-     * One taxon per collection (collections of the same name are merged), with its parent code.
+     * One taxon per collection, with its parent code. A collection is identified by its code when it has one (a
+     * grouped menu may repeat a name across groups), otherwise by its name: collections of the same name are merged.
      *
-     * @return list<array{code: string, name: string, slug: string, image: ?string, parent: ?string}>
+     * @return list<array{code: string, name: string, slug: string, image: ?string, parent: ?string, id: string}>
      */
     public static function taxonIndex(Dataset $dataset, CatalogTarget $target): array
     {
-        /** @var array<string, array{code: string, name: string, slug: string, image: ?string, parent: ?string, parentName: string}> $indexed */
+        /** @var array<string, array{code: string, name: string, slug: string, image: ?string, parent: ?string, id: string, parentId: string}> $indexed */
         $indexed = [];
         $usedCodes = [];
 
@@ -160,25 +163,25 @@ final class CatalogFixtures
             $image = \is_string($collection['image'] ?? null) && !\in_array(strtolower(trim($collection['image'])), ['', 'null'], true)
                 ? trim($collection['image'])
                 : null;
-            $parentName = trim((string) ($collection['parent'] ?? ''));
-            $key = Codes::normalizeLabel($name);
+            $parentId = Codes::normalizeLabel((string) ($collection['parent'] ?? ''));
+            $id = Codes::normalizeLabel(\is_scalar($collection['code'] ?? null) && '' !== trim((string) $collection['code']) ? (string) $collection['code'] : $name);
 
-            if (isset($indexed[$key])) {
-                $indexed[$key]['image'] ??= $image;
-                $indexed[$key]['parentName'] = '' !== $indexed[$key]['parentName'] ? $indexed[$key]['parentName'] : $parentName;
+            if (isset($indexed[$id])) {
+                $indexed[$id]['image'] ??= $image;
+                $indexed[$id]['parentId'] = '' !== $indexed[$id]['parentId'] ? $indexed[$id]['parentId'] : $parentId;
 
                 continue;
             }
 
-            $code = Codes::unique($target->prefixedCode(Codes::fromLabel($name)), $usedCodes);
-            $indexed[$key] = ['code' => $code, 'name' => $name, 'slug' => $code, 'image' => $image, 'parent' => null, 'parentName' => $parentName];
+            $code = Codes::unique($target->prefixedCode(Codes::fromLabel($id)), $usedCodes);
+            $indexed[$id] = ['code' => $code, 'name' => $name, 'slug' => $code, 'image' => $image, 'parent' => null, 'id' => $id, 'parentId' => $parentId];
         }
 
         $taxons = [];
 
         foreach ($indexed as $taxon) {
-            $parent = $indexed[Codes::normalizeLabel($taxon['parentName'])]['code'] ?? null;
-            unset($taxon['parentName']);
+            $parent = '' !== $taxon['parentId'] ? self::find($taxon['parentId'], $indexed)['code'] ?? null : null;
+            unset($taxon['parentId']);
             $taxon['parent'] = $parent !== $taxon['code'] ? $parent : null;
             $taxons[] = $taxon;
         }
@@ -191,10 +194,10 @@ final class CatalogFixtures
      * products of a dropped taxon fall back to the root taxon. In a grouped menu (collections with a parent, grouped
      * when the dataset was built), the taxons holding products and their ancestors.
      *
-     * @param list<array{code: string, name: string, slug: string, image: ?string, parent: ?string}> $taxons
+     * @param list<array{code: string, name: string, slug: string, image: ?string, parent: ?string, id: string}> $taxons
      * @param array<int, string>                                                                    $assignments
      *
-     * @return array{0: list<array{code: string, name: string, slug: string, image: ?string, parent: ?string}>, 1: array<int, string>}
+     * @return array{0: list<array{code: string, name: string, slug: string, image: ?string, parent: ?string, id: string}>, 1: array<int, string>}
      */
     public static function menuTaxons(array $taxons, array $assignments, int $limit = self::MENU_TAXON_LIMIT): array
     {
@@ -267,15 +270,29 @@ final class CatalogFixtures
     }
 
     /**
-     * @param list<array{code: string, name: string, slug: string, image: ?string, parent: ?string}> $taxons
+     * The collection of this code, or else of this name.
+     *
+     * @template T of array{name: string, id: string}
+     *
+     * @param array<array-key, T> $taxons
+     *
+     * @return T|null
      */
-    private static function taxonCodeOf(string $collectionName, array $taxons): ?string
+    private static function find(string $identifier, array $taxons): ?array
     {
-        $normalized = Codes::normalizeLabel($collectionName);
+        if ('' === $identifier) {
+            return null;
+        }
 
         foreach ($taxons as $taxon) {
-            if ('' !== $normalized && Codes::normalizeLabel($taxon['name']) === $normalized) {
-                return $taxon['code'];
+            if ($taxon['id'] === $identifier) {
+                return $taxon;
+            }
+        }
+
+        foreach ($taxons as $taxon) {
+            if (Codes::normalizeLabel($taxon['name']) === $identifier) {
+                return $taxon;
             }
         }
 
@@ -300,7 +317,7 @@ final class CatalogFixtures
     }
 
     /**
-     * @param list<array{code: string, name: string, slug: string, image: ?string, parent: ?string}> $taxons
+     * @param list<array{code: string, name: string, slug: string, image: ?string, parent: ?string, id: string}> $taxons
      *
      * @return list<array<string, mixed>>
      */
