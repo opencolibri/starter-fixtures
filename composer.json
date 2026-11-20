@@ -1,0 +1,49 @@
+{
+    "name": "opencolibri/starter-fixtures",
+    "description": "Castor tasks loading a dataset into Sylius as fixtures: taxons, products, prices and images, without AI or network",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "sylius",
+        "castor",
+        "starter"
+    ],
+    "homepage": "https://github.com/opencolibri/colibri-starter",
+    "authors": [
+        {
+            "name": "Loïc Frémont",
+            "email": "lfremont@jolicode.com"
+        },
+        {
+            "name": "Jérôme Gangneux",
+            "email": "jerome@gangneux.net"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "opencolibri/starter-core": "self.version",
+        "symfony/filesystem": "^7.4|^8.0",
+        "symfony/yaml": "^7.4|^8.0"
+    },
+    "suggest": {
+        "jolicode/castor-api": "Expose the tasks over HTTP"
+    },
+    "autoload": {
+        "psr-4": {
+            "OpenColibri\\Starter\\Fixtures\\": "src/"
+        },
+        "files": [
+            "src/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "OpenColibri\\Starter\\Fixtures\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1-dev"
+        }
+    }
+}
