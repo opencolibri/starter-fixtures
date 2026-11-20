@@ -389,22 +389,18 @@ final class CatalogFixtures
     }
 
     /**
+     * The configuration of one fixture of the suite.
+     *
      * @param array<array-key, mixed> $custom
+     * @param int|null                $priority a negative priority runs it after the catalog (e.g. on the channel the
+     *                                          catalog recreates)
      *
      * @return array<string, mixed>
      */
-    public static function suite(string $key, string $fixture, array $custom): array
+    public static function suite(string $key, string $fixture, array $custom, ?int $priority = null): array
     {
-        return [
-            'sylius_fixtures' => [
-                'suites' => [
-                    'import' => [
-                        'fixtures' => [
-                            $key => ['name' => $fixture, 'options' => ['custom' => $custom]],
-                        ],
-                    ],
-                ],
-            ],
-        ];
+        $entry = ['name' => $fixture] + (null !== $priority ? ['priority' => $priority] : []) + ['options' => ['custom' => $custom]];
+
+        return ['sylius_fixtures' => ['suites' => ['import' => ['fixtures' => [$key => $entry]]]]];
     }
 }
