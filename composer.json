@@ -22,7 +22,6 @@
     "require": {
         "php": ">=8.3",
         "opencolibri/starter-core": "self.version",
-        "symfony/filesystem": "^7.4|^8.0",
         "symfony/yaml": "^7.4|^8.0"
     },
     "suggest": {
